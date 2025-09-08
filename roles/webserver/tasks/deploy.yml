@@ -1,0 +1,67 @@
+---
+- name: Ensure apt cache is updated
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  tags: deploy
+
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+  tags: deploy
+
+- name: Create web root
+  file:
+    path: /var/www/helloworld
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+  tags: deploy
+
+
+- name: Deploy index.html with vm_id
+  template:
+    src: /roles/webserver/templates/index.html.j2
+    dest: /var/www/helloworld/index.html
+    owner: www-data
+    group: www-data
+    mode: '0644'
+  tags: deploy
+
+
+- name: Deploy Nginx site config for port 8080
+  template:
+    src: /roles/webserver/templates/helloworld.conf.j2
+    dest: /etc/nginx/sites-available/helloworld
+    mode: '0644'
+  tags: deploy
+
+
+- name: Disable default site if present
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  tags: deploy
+
+
+- name: Enable helloworld site
+  file:
+    src: /etc/nginx/sites-available/helloworld
+    path: /etc/nginx/sites-enabled/helloworld
+    state: link
+  tags: deploy
+
+
+- name: Test Nginx config
+  command: nginx -t
+  tags: deploy
+
+
+- name: Restart Nginx
+  service:
+    name: nginx
+    state: restarted
+    enabled: yes
+  tags: deploy

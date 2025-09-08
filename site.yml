@@ -1,0 +1,86 @@
+---
+- name: Deploy webserver on port 8080
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Ensure apt cache is updated
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Create web root
+      file:
+        path: /var/www/helloworld
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Deploy index.html with vm_id
+      template:
+        src: /roles/webserver/templates/index.html.j2
+        dest: /var/www/helloworld/index.html
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+    - name: Deploy Nginx site config for port 8080
+      template:
+        src: /roles/webserver/templates/helloworld.conf.j2
+        dest: /etc/nginx/sites-available/helloworld
+        mode: '0644'
+
+    - name: Disable default site if present
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Enable helloworld site
+      file:
+        src: /etc/nginx/sites-available/helloworld
+        path: /etc/nginx/sites-enabled/helloworld
+        state: link
+
+    - name: Test Nginx config
+      command: nginx -t
+
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted
+        enabled: yes
+  tags: deploy
+
+- name: Undeploy webserver resources
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Remove helloworld site symlink
+      file:
+        path: /etc/nginx/sites-enabled/helloworld
+        state: absent
+      ignore_errors: yes
+
+    - name: Remove helloworld site config
+      file:
+        path: /etc/nginx/sites-available/helloworld
+        state: absent
+      ignore_errors: yes
+
+    - name: Remove web root
+      file:
+        path: /var/www/helloworld
+        state: absent
+      ignore_errors: yes
+
+    - name: Restart Nginx if installed
+      service:
+        name: nginx
+        state: restarted
+      ignore_errors: yes
+  tags: undeploy

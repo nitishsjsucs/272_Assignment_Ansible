@@ -1,0 +1,28 @@
+---
+  - name: Remove helloworld site symlink
+    file:
+      path: /etc/nginx/sites-enabled/helloworld
+      state: absent
+    ignore_errors: yes
+    tags: undeploy
+
+  - name: Remove helloworld site config
+    file:
+      path: /etc/nginx/sites-available/helloworld
+      state: absent
+    ignore_errors: yes
+    tags: undeploy
+
+  - name: Remove web root
+    file:
+      path: /var/www/helloworld
+      state: absent
+    ignore_errors: yes
+    tags: undeploy
+
+  - name: Restart Nginx if installed
+    service:
+      name: nginx
+      state: restarted
+    ignore_errors: yes
+    tags: undeploy  
